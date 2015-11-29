@@ -8,36 +8,38 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.SeekBar;
-import android.os.Handler;
 
-public class Exhibit extends AppCompatActivity {
+import android.util.Log;
 
-    SeekBar seek_bar;//seekbar
+import android.view.View.OnClickListener;
+import android.widget.ImageButton;
 
-    Handler seekHandler = new Handler();//seekbar
-    MediaPlayer audio;
+import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Toast;
+
+public class Exhibit extends AppCompatActivity implements Runnable, OnClickListener, OnSeekBarChangeListener {
+
+    private SeekBar seek_bar;
+
+    private MediaPlayer audio;
+    private ImageButton startMedia;
+    private ImageButton stopMedia;
+
+
     int paused;
 
-    public void playMusic (View view) {
-        if(audio == null) {
-            audio = MediaPlayer.create(this, R.raw.tovivaldi);
-            audio.start();
-        }else if(!audio.isPlaying()){
-            audio.seekTo(paused);
-            audio.start();
+
+    public void onBackPressed() {
+        if (audio.isPlaying() ) {
+            audio.stop();
+            startActivity(new Intent(this, Map.class));
+            finish();
+            return;
         }
-
+        // Otherwise defer to system default behavior.
+        super.onBackPressed();
     }
 
-    public void pauseMusic(View view) {
-        audio.pause();
-        paused = audio.getCurrentPosition();
-    }
-
-    public void stopMusic(View view) {
-        audio.release();
-        audio = null;
-    }
 
 
 
@@ -58,8 +60,15 @@ public class Exhibit extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_exhibit);
 
- getInit();
-        seekUpdation();
+        seek_bar = (SeekBar) findViewById(R.id.seek_bar);
+        startMedia = (ImageButton) findViewById(R.id.play);
+        stopMedia = (ImageButton) findViewById(R.id.pause);
+        startMedia.setOnClickListener(this);
+        stopMedia.setOnClickListener(this);
+        seek_bar.setOnSeekBarChangeListener(this);
+        seek_bar.setEnabled(false);
+
+
 
         toolbar = (android.support.v7.widget.Toolbar) findViewById(R.id.app_bar);
         setSupportActionBar(toolbar);
@@ -68,25 +77,78 @@ public class Exhibit extends AppCompatActivity {
 
 
     }
-    public void getInit() {
-        seek_bar = (SeekBar) findViewById(R.id.seek_bar);
 
 
-        audio = MediaPlayer.create(this, R.raw.tovivaldi);
-        seek_bar.setMax(audio.getDuration());
-    }
-    Runnable run = new Runnable()
-    {
-        @Override
-        public void run()
-        {
-            seekUpdation();
+    public void run() {
+        int currentPosition = audio.getCurrentPosition();
+        int total = audio.getDuration();
+
+        while (audio != null && currentPosition < total) {
+            try {
+                Thread.sleep(1000);
+                currentPosition = audio.getCurrentPosition();
+            } catch (InterruptedException e) {
+                return;
+            } catch (Exception e) {
+                return;
+            }
+            seek_bar.setProgress(currentPosition);
         }
-    };
-    public void seekUpdation()
-    {
-        seek_bar.setProgress(audio.getCurrentPosition());
-        seekHandler.postDelayed(run, 0);
+    }
+    public void onClick(View v) {
+        if (v.equals(startMedia)) {
+            if (audio == null) {
+                audio = MediaPlayer.create(getApplicationContext(), R.raw.tovivaldi);
+                seek_bar.setEnabled(true);
+            }
+            if (audio.isPlaying()) {
+                audio.pause();
+
+            } else {
+                audio.start();
+
+                seek_bar.setMax(audio.getDuration());
+                new Thread(this).start();
+            }
+        }
+        if (v.equals(stopMedia) && audio != null) {
+            if (audio.isPlaying() || audio.getDuration() > 0) {
+                audio.stop();
+                audio = null;
+
+                seek_bar.setProgress(0);
+            }
+        }
+
+    }
+
+    public void onProgressChanged(SeekBar seekBar, int progress,
+                                  boolean fromUser) {
+        try {
+            if (audio.isPlaying() || audio != null) {
+                if (fromUser)
+                    audio.seekTo(progress);
+            } else if (audio == null) {
+                Toast.makeText(getApplicationContext(), "Media is not running",
+                        Toast.LENGTH_SHORT).show();
+                seekBar.setProgress(0);
+            }
+        } catch (Exception e) {
+            Log.e("seek bar", "" + e);
+            seekBar.setEnabled(false);
+
+        }
+    }
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+        // TODO Auto-generated method stub
+
     }
 
 
@@ -95,20 +157,29 @@ public class Exhibit extends AppCompatActivity {
         int id = item.getItemId();
 
         if(id==R.id.navigate){
-            audio.stop();
+            if (audio.isPlaying() ) {
+                audio.stop();
+
+            }
             startActivity(new Intent(this, Exhibit2.class));
             finish();
 
         }
 
         if(id==R.id.navigatePrevious){
-            audio.stop();
+            if (audio.isPlaying() ) {
+                audio.stop();
+
+            }
             startActivity(new Intent(this, Exhibit10.class));
 
         }
 
         if(id==R.id.map){
-            audio.stop();
+            if (audio.isPlaying() ) {
+                audio.stop();
+
+            }
             startActivity(new Intent(this, Map.class));
             finish();
 
